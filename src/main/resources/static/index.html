@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Aspiron's Library Dashboard</title>
+<style>
+body{margin:0;font-family:"Segoe UI",Arial;background:#eef3f7;}
+.top-header{background:white;padding:10px 20px;border-bottom:3px solid #0b3c5d;position:relative;}
+.top-header h1{margin:0;color:#b00000;text-align:center;}
+.top-search{position:absolute;right:20px;top:10px;display:flex;gap:6px;}
+.top-search input{padding:6px;border:1px solid #ccc;border-radius:4px;width:110px;}
+.top-search button{padding:6px 8px;background:#0b3c5d;color:white;border:none;cursor:pointer;border-radius:4px;font-size:12px;}
+.navbar{background:#0b3c5d;display:flex;justify-content:center;}
+.navbar button{background:none;border:none;color:white;padding:14px 24px;font-size:16px;cursor:pointer;}
+.navbar button:hover{background:#1d5c87;}
+.content{padding:25px;}
+.section{display:none;}
+.section.active{display:block;}
+.card{background:white;padding:20px;border-radius:6px;max-width:1000px;margin:auto;}
+h2{color:#0b3c5d;}
+input,textarea{width:100%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:4px;}
+button.primary{background:#0b3c5d;color:white;border:none;padding:8px;margin-top:8px;cursor:pointer;}
+.student,.item{border:1px solid #ccc;padding:8px;margin:6px 0;cursor:pointer;}
+.status-box{padding:10px;margin:8px 0;border-left:4px solid #0b3c5d;background:#f4f6f8;}
+#welcomeText{text-align:center;}
+#bookStatusResult{display:none;}
+</style>
+</head>
+<body>
+
+<div class="top-header">
+<h1>ASPIRON’S LIBRARY</h1>
+<div class="top-search">
+<input id="quickBookId" placeholder="Book ID">
+<button onclick="quickSearch()">ID</button>
+<input id="quickBookName" placeholder="Book Name">
+<button onclick="searchByName()">Name</button>
+</div>
+</div>
+
+<div class="navbar">
+<button onclick="openSection('home')">Home</button>
+<button onclick="openSection('students')">Students</button>
+<button onclick="openSection('books')">Books</button>
+<button onclick="openSection('borrow')">Borrow</button>
+<button onclick="openSection('return')">Return</button>
+<button onclick="openSection('issues')">Issues</button>
+<button onclick="openSection('status')">Status</button>
+</div>
+
+<div class="content">
+
+<div id="home" class="section active card">
+<div id="welcomeText">
+<h2>Welcome to Aspiron’s Library</h2>
+<p>Library Management Dashboard</p>
+</div>
+<div id="bookStatusResult"></div>
+</div>
+
+<div id="students" class="section card">
+<h2>Students</h2>
+<input id="sname" placeholder="Student Name">
+<input id="semail" placeholder="Email">
+<button class="primary" onclick="addStudent()">Create Student</button>
+<hr>
+<button class="primary" onclick="toggleStudents()">All Students</button>
+<div id="studentsList"></div>
+</div>
+
+<div id="books" class="section card">
+<h2>Books</h2>
+<input id="btitle" placeholder="Title">
+<input id="bauthor" placeholder="Author">
+<input id="bsubject" placeholder="Subject">
+<input id="bqty" placeholder="Quantity">
+<button class="primary" onclick="addBook()">Create Book</button>
+<hr>
+<button class="primary" onclick="toggleBooks()">All Books</button>
+<div id="booksList"></div>
+</div>
+
+<div id="borrow" class="section card">
+<h2>Borrow Book</h2>
+<input id="studentId" placeholder="Student ID">
+<input id="selectedBookId" placeholder="Book ID">
+<button class="primary" onclick="borrowBook()">Borrow</button>
+<div id="borrowMsg"></div>
+</div>
+
+<div id="return" class="section card">
+<h2>Return Book</h2>
+<input id="returnBorrowId" placeholder="Borrow ID">
+<button class="primary" onclick="returnBook()">Return</button>
+<div id="returnMsg"></div>
+</div>
+
+<div id="issues" class="section card">
+<h2>Book Issues</h2>
+<input id="issueStudentId" placeholder="Student ID">
+<input id="issueBookId" placeholder="Book ID">
+<input id="issueType" placeholder="Issue Type (DAMAGED / TORN / LOST / PAGES TORN)">
+<textarea id="issueDesc" placeholder="Issue description"></textarea>
+<input id="issueFine" placeholder="Fine Amount">
+<button class="primary" onclick="addIssue()">Save Issue</button>
+<div id="issueMsg"></div>
+<hr>
+<button class="primary" onclick="toggleIssues()">All Issues</button>
+<div id="issuesList"></div>
+</div>
+
+<div id="status" class="section card">
+<h2>Borrow Status</h2>
+<button class="primary" onclick="loadBorrowStatusWithDetails()">Load Status</button>
+<div id="statusResult"></div>
+</div>
+
+</div>
+
+<script>
+const BASE_URL="http://localhost:8081";
+let studentsOpen=false, booksOpen=false, issuesOpen=false;
+
+function openSection(id){
+document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+}
+
+/* Students */
+async function toggleStudents(){
+studentsOpen=!studentsOpen;
+studentsList.innerHTML="";
+if(!studentsOpen) return;
+const students=await fetch(BASE_URL+"/students").then(r=>r.json());
+students.forEach(s=>studentsList.innerHTML+=`<div class="student">${s.name} | ID:${s.id}</div>`);
+}
+
+function addStudent(){
+fetch(BASE_URL+"/students",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({name:sname.value,email:semail.value})})
+.then(()=>studentsList.innerHTML=`<div class="status-box">✅ Student created successfully</div>`);
+}
+
+/* Books */
+async function toggleBooks(){
+booksOpen=!booksOpen;
+booksList.innerHTML="";
+if(!booksOpen) return;
+const books=await fetch(BASE_URL+"/books").then(r=>r.json());
+books.sort((a,b)=>a.id-b.id);
+books.forEach(b=>booksList.innerHTML+=`<div class="item">${b.title} | ID:${b.id}</div>`);
+}
+
+function addBook(){
+fetch(BASE_URL+"/books",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({title:btitle.value,author:bauthor.value,subject:bsubject.value,quantity:+bqty.value})})
+.then(()=>booksList.innerHTML=`<div class="status-box">✅ Book created successfully</div>`);
+}
+
+/* Borrow */
+async function borrowBook(){
+const bookId=+selectedBookId.value;
+const studentIdVal=+studentId.value;
+const borrows=await fetch(BASE_URL+"/borrow").then(r=>r.json());
+const active=borrows.find(b=>b.book.id===bookId && !b.returnDate);
+if(active){borrowMsg.innerHTML=`<div class="status-box">❌ Borrowed by ${active.student.name} (ID:${active.student.id})</div>`;return;}
+fetch(BASE_URL+"/borrow",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({student:{id:studentIdVal},book:{id:bookId},quantityTaken:1})})
+.then(()=>borrowMsg.innerHTML=`<div class="status-box">✅ Borrowed Successfully</div>`);
+}
+
+/* Return */
+async function returnBook(){
+const id=+returnBorrowId.value;
+const borrows=await fetch(BASE_URL+"/borrow").then(r=>r.json());
+const record=borrows.find(b=>b.id===id);
+if(!record){returnMsg.innerHTML=`<div class="status-box">❌ Wrong Borrow ID</div>`;return;}
+if(record.returnDate){returnMsg.innerHTML=`<div class="status-box">⚠️ Already returned</div>`;return;}
+fetch(BASE_URL+"/borrow/return/"+id,{method:"PUT"})
+.then(()=>returnMsg.innerHTML=`<div class="status-box">✅ Returned successfully</div>`);
+}
+
+/* Issues */
+function addIssue(){
+const valid=["DAMAGED","TORN","LOST","PAGES TORN"];
+const type=issueType.value.trim().toUpperCase();
+if(!valid.includes(type)) return alert("Normal return. Issue not saved.");
+fetch(BASE_URL+"/issues",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({borrow:null,issueType:type,
+description:`Student:${issueStudentId.value}, Book:${issueBookId.value} - ${issueDesc.value}`,
+fineAmount:+issueFine.value})})
+.then(()=>issueMsg.innerHTML=`<div class="status-box">✅ Issue saved successfully</div>`);
+}
+
+async function toggleIssues(){
+issuesOpen=!issuesOpen;
+issuesList.innerHTML="";
+if(!issuesOpen) return;
+const issues=await fetch(BASE_URL+"/issues").then(r=>r.json());
+issues.forEach(i=>issuesList.innerHTML+=`<div class="status-box">${i.issueType}<br>${i.description}<br>Fine ₹${i.fineAmount}</div>`);
+}
+
+/* Search by ID */
+async function quickSearch(){
+const id=+quickBookId.value;
+if(!id) return;
+welcomeText.style.display="none";
+bookStatusResult.style.display="block";
+const books=await fetch(BASE_URL+"/books").then(r=>r.json());
+const book=books.find(b=>b.id===id);
+if(!book){bookStatusResult.innerHTML="<div class='status-box'>Book not found</div>";return;}
+const borrows=await fetch(BASE_URL+"/borrow").then(r=>r.json());
+const active=borrows.find(b=>b.book.id===id && !b.returnDate);
+bookStatusResult.innerHTML=active
+? `<div class="status-box">❌ Borrowed by ${active.student.name} (ID:${active.student.id})</div>`
+: `<div class="status-box">✅ Available in Library</div>`;
+}
+
+/* Search by Name */
+async function searchByName(){
+const name=quickBookName.value.trim().toLowerCase();
+if(!name) return;
+welcomeText.style.display="none";
+bookStatusResult.style.display="block";
+const books=await fetch(BASE_URL+"/books").then(r=>r.json());
+const found=books.filter(b=>b.title.toLowerCase().includes(name));
+bookStatusResult.innerHTML=found.length
+? found.map(b=>`<div class="status-box"><b>${b.title}</b><br>ID:${b.id}</div>`).join("")
+: "<div class='status-box'>No books found</div>";
+}
+
+/* Borrow Status */
+async function loadBorrowStatusWithDetails(){
+const borrows=await fetch(BASE_URL+"/borrow").then(r=>r.json());
+statusResult.innerHTML=borrows.length
+? borrows.map(b=>`<div class="status-box">
+Borrow ID:${b.id}<br>
+Book:${b.book.title} (ID:${b.book.id})<br>
+Student:${b.student.name} (ID:${b.student.id})<br>
+Status:${b.returnDate?"Returned":"Pending"}
+</div>`).join("")
+: "<div class='status-box'>No borrow records</div>";
+}
+</script>
+</body>
+</html>
